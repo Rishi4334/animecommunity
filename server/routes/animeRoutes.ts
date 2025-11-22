@@ -67,7 +67,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 // Create new anime group (start anime)
 router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { animeName, genre, totalEpisodes, links, thoughts, startDate, startTime } = req.body;
+    const { animeName, genre, totalEpisodes, links, thoughts, startDate, startTime, coverImage } = req.body;
 
     const animeGroup = new AnimeGroup({
       userId: req.user!._id,
@@ -75,6 +75,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       genre,
       totalEpisodes,
       links,
+      coverImage,
       entries: [
         {
           type: 'start',

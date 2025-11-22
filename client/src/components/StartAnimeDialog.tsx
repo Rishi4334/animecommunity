@@ -37,6 +37,7 @@ interface StartAnimeDialogProps {
 export function StartAnimeDialog({ open, onOpenChange }: StartAnimeDialogProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [coverImage, setCoverImage] = useState<string>('');
   const [links, setLinks] = useState<Array<{ label: string; url: string }>>([
     { label: '', url: '' },
   ]);
@@ -54,10 +55,21 @@ export function StartAnimeDialog({ open, onOpenChange }: StartAnimeDialogProps) 
     },
   });
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const onSubmit = async (data: StartAnimeFormData) => {
     setIsLoading(true);
     try {
-      await api.post('/anime', data);
+      await api.post('/anime', { ...data, coverImage });
       queryClient.invalidateQueries({ queryKey: ['/anime/my-anime'] });
       queryClient.invalidateQueries({ queryKey: ['/anime/feed'] });
       toast({
@@ -67,6 +79,7 @@ export function StartAnimeDialog({ open, onOpenChange }: StartAnimeDialogProps) 
       onOpenChange(false);
       form.reset();
       setLinks([{ label: '', url: '' }]);
+      setCoverImage('');
     } catch (error: any) {
       toast({
         title: 'Failed to start anime',
@@ -158,6 +171,26 @@ export function StartAnimeDialog({ open, onOpenChange }: StartAnimeDialogProps) 
                 </FormItem>
               )}
             />
+
+            <FormItem>
+              <FormLabel>Cover Image (Optional)</FormLabel>
+              <FormControl>
+                <div className="space-y-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    data-testid="input-cover-image"
+                  />
+                  {coverImage && (
+                    <div className="relative w-32 h-48 rounded-md overflow-hidden border">
+                      <img src={coverImage} alt="Cover preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+              </FormControl>
+              <FormDescription>Upload an anime cover image (PNG, JPG, etc.)</FormDescription>
+            </FormItem>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">

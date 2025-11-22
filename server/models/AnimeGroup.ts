@@ -21,6 +21,7 @@ export interface IAnimeGroup extends Document {
   totalEpisodes: number;
   links: IAnimeLink[];
   entries: IEntry[];
+  coverImage?: string;
   createdAt: Date;
 }
 
@@ -88,6 +89,10 @@ const animeGroupSchema = new Schema({
   entries: {
     type: [entrySchema],
     default: [],
+  },
+  coverImage: {
+    type: String,
+    default: null,
   },
   createdAt: {
     type: Date,

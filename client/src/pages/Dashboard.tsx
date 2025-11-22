@@ -57,7 +57,12 @@ export default function Dashboard() {
 
     return (
       <Link href={`/anime/${group._id}`}>
-        <Card className="hover-elevate active-elevate-2 transition-all cursor-pointer h-full" data-testid={`card-anime-${group._id}`}>
+        <Card className="hover-elevate active-elevate-2 transition-all cursor-pointer h-full overflow-hidden" data-testid={`card-anime-${group._id}`}>
+          {group.coverImage && (
+            <div className="relative w-full h-40 overflow-hidden bg-muted">
+              <img src={group.coverImage} alt={group.animeName} className="w-full h-full object-cover" />
+            </div>
+          )}
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">

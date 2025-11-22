@@ -40,7 +40,12 @@ export default function PublicFeed() {
     const badgeColor = getEntryBadgeColor(entry.type);
 
     return (
-      <Card className="hover-elevate active-elevate-2 transition-all" data-testid={`card-entry-${group._id}`}>
+      <Card className="hover-elevate active-elevate-2 transition-all overflow-hidden" data-testid={`card-entry-${group._id}`}>
+        {group.coverImage && (
+          <div className="relative w-full h-32 bg-muted">
+            <img src={group.coverImage} alt={group.animeName} className="w-full h-full object-cover" />
+          </div>
+        )}
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
             <Avatar className="h-10 w-10">
