@@ -17,8 +17,9 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [showStartDialog, setShowStartDialog] = useState(false);
 
-  const { data: animeGroups, isLoading } = useQuery<AnimeGroup[]>({
+  const { data: animeGroups, isLoading, refetch } = useQuery<AnimeGroup[]>({
     queryKey: ['/anime/my-anime'],
+    refetchOnMount: true,
   });
 
   const watching = animeGroups?.filter(group => {
