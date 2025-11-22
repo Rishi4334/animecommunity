@@ -70,8 +70,8 @@ export function StartAnimeDialog({ open, onOpenChange }: StartAnimeDialogProps) 
     setIsLoading(true);
     try {
       await api.post('/anime', { ...data, coverImage });
-      queryClient.invalidateQueries({ queryKey: ['/anime/my-anime'] });
-      queryClient.invalidateQueries({ queryKey: ['/anime/feed'] });
+      await queryClient.refetchQueries({ queryKey: ['/anime/my-anime'] });
+      await queryClient.refetchQueries({ queryKey: ['/anime/feed'] });
       toast({
         title: 'Anime started!',
         description: 'Your anime is private. Request to make it public for others to see.',
