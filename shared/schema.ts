@@ -76,6 +76,7 @@ export const animeGroupSchema = z.object({
   totalEpisodes: z.number().min(1, "Total episodes must be at least 1"),
   links: z.array(animeLinkSchema).default([]),
   entries: z.array(entrySchema).default([]),
+  coverImage: z.string().optional(),
   createdAt: z.date().or(z.string()).optional(),
 });
 
@@ -87,6 +88,7 @@ export const insertAnimeGroupSchema = z.object({
   thoughts: z.string().min(10, "Share your initial thoughts (min 10 characters)"),
   startDate: z.string().min(1, "Start date is required"),
   startTime: z.string().min(1, "Start time is required"),
+  coverImage: z.string().optional(),
 });
 
 export const updateEntrySchema = z.object({

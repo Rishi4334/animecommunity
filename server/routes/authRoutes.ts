@@ -17,6 +17,10 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Check if this is the first user (make them admin)
+    const userCount = await User.countDocuments();
+    const isFirstUser = userCount === 0;
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -25,7 +29,7 @@ router.post('/register', async (req: Request, res: Response) => {
       username,
       email,
       password: hashedPassword,
-      role: role || 'normal',
+      role: isFirstUser ? 'admin' : (role || 'normal'),
       profileLinks: { animeSites: [], mangaSites: [] },
     });
 
@@ -43,7 +47,11 @@ router.post('/register', async (req: Request, res: Response) => {
       createdAt: user.createdAt,
     };
 
-    res.status(201).json({ token, user: userResponse });
+    res.status(201).json({ 
+      token, 
+      user: userResponse, 
+      message: isFirstUser ? 'Welcome! You are registered as admin.' : 'Registration successful!' 
+    });
   } catch (error: any) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
