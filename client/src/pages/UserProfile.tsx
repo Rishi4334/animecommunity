@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ManageProfileLinksDialog } from '@/components/ManageProfileLinksDialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import {
   Clock,
   CheckCircle,
@@ -23,8 +26,17 @@ import { AnimeGroup } from '@shared/schema';
 export default function UserProfile() {
   const params = useParams();
   const viewedUserId = params?.id;
-  const { user } = useAuth();
+  const { user, token, login } = useAuth();
   const [showLinksDialog, setShowLinksDialog] = useState(false);
+  const { toast } = useToast();
+
+  const [editedUsername, setEditedUsername] = useState(user?.username || '');
+  const [editedEmail, setEditedEmail] = useState(user?.email || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const { data: animeGroups, isLoading } = useQuery<AnimeGroup[]>({
     queryKey: viewedUserId ? ['/anime/user', viewedUserId] : ['/anime/my-anime'],
@@ -170,6 +182,119 @@ export default function UserProfile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Account Settings (own profile only) */}
+        {!viewedUserId && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Edit Account</CardTitle>
+                <CardDescription>Update your username and email</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input id="username" value={editedUsername} onChange={(e) => setEditedUsername(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" value={editedEmail} onChange={(e) => setEditedEmail(e.target.value)} />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEditedUsername(user?.username || '');
+                      setEditedEmail(user?.email || '');
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        setIsSavingProfile(true);
+                        const response = await api.put('/users/profile', { username: editedUsername, email: editedEmail });
+                        const updatedUser = response.data.user;
+                        if (token) {
+                          login(token, updatedUser);
+                        }
+                        toast({ title: 'Profile updated', description: 'Your account info has been updated' });
+                      } catch (error: any) {
+                        toast({ title: 'Update failed', description: error.response?.data?.message || 'An error occurred', variant: 'destructive' });
+                      } finally {
+                        setIsSavingProfile(false);
+                      }
+                    }}
+                    disabled={isSavingProfile || !editedUsername || !editedEmail}
+                  >
+                    {isSavingProfile ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Change Password</CardTitle>
+                <CardDescription>Update your password securely</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Current Password</Label>
+                  <Input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm New Password</Label>
+                  <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        if (!currentPassword || !newPassword) {
+                          toast({ title: 'Missing fields', description: 'Enter current and new password', variant: 'destructive' });
+                          return;
+                        }
+                        if (newPassword !== confirmPassword) {
+                          toast({ title: 'Passwords do not match', description: 'Confirm new password correctly', variant: 'destructive' });
+                          return;
+                        }
+                        setIsChangingPassword(true);
+                        await api.put('/users/password', { currentPassword, newPassword });
+                        toast({ title: 'Password updated', description: 'Your password has been changed' });
+                        setCurrentPassword('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                      } catch (error: any) {
+                        toast({ title: 'Change failed', description: error.response?.data?.message || 'An error occurred', variant: 'destructive' });
+                      } finally {
+                        setIsChangingPassword(false);
+                      }
+                    }}
+                    disabled={isChangingPassword}
+                  >
+                    {isChangingPassword ? 'Updating...' : 'Update Password'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Stats */}
         {!isLoading && (
