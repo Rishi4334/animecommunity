@@ -12,9 +12,7 @@ router.get('/stats', authenticate, requireAdmin, async (req: AuthRequest, res: R
     const totalAnimeGroups = await AnimeGroup.countDocuments();
     
     const allGroups = await AnimeGroup.find();
-    const pendingEntries = allGroups.reduce((count, group) => {
-      return count + group.entries.filter(entry => !entry.adminApproved).length;
-    }, 0);
+    const pendingPosts = allGroups.filter(group => !group.isPublic).length;
 
     const completedGroups = allGroups.filter(group => {
       const lastEntry = group.entries[group.entries.length - 1];
@@ -25,7 +23,7 @@ router.get('/stats', authenticate, requireAdmin, async (req: AuthRequest, res: R
 
     res.json({
       totalUsers,
-      pendingEntries,
+      pendingPosts,
       totalAnimeGroups,
       completionRate,
     });

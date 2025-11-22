@@ -11,8 +11,11 @@ router.post('/register', async (req: Request, res: Response) => {
   try {
     const { username, email, password, role } = req.body;
 
+    // Normalize email
+    const normalizedEmail = email.toLowerCase();
+    
     // Check if user exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({ $or: [{ email: normalizedEmail }, { username }] });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -27,7 +30,7 @@ router.post('/register', async (req: Request, res: Response) => {
     // Create user
     const user = new User({
       username,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       role: isFirstUser ? 'admin' : (role || 'normal'),
       profileLinks: { animeSites: [], mangaSites: [] },
@@ -63,8 +66,8 @@ router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
-    const user = await User.findOne({ email });
+    // Find user (normalize email)
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }

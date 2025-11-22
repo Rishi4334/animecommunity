@@ -74,7 +74,7 @@ export function StartAnimeDialog({ open, onOpenChange }: StartAnimeDialogProps) 
       queryClient.invalidateQueries({ queryKey: ['/anime/feed'] });
       toast({
         title: 'Anime started!',
-        description: 'Your entry is pending admin approval',
+        description: 'Your anime is private. Request to make it public for others to see.',
       });
       onOpenChange(false);
       form.reset();
