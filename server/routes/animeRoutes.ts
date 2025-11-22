@@ -16,10 +16,10 @@ router.get('/my-anime', authenticate, async (req: AuthRequest, res: Response) =>
   }
 });
 
-// Get public feed (only approved entries)
+// Get public feed (only approved/public anime posts)
 router.get('/feed', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const animeGroups = await AnimeGroup.find().sort({ createdAt: -1 }).limit(100);
+    const animeGroups = await AnimeGroup.find({ isPublic: true }).sort({ createdAt: -1 }).limit(100);
     
     const groupsWithUsers = await Promise.all(
       animeGroups.map(async (group) => {
@@ -32,6 +32,8 @@ router.get('/feed', authenticate, async (req: AuthRequest, res: Response) => {
           totalEpisodes: group.totalEpisodes,
           links: group.links,
           entries: group.entries,
+          coverImage: group.coverImage,
+          isPublic: group.isPublic,
           createdAt: group.createdAt,
           user: {
             username: user?.username || 'Unknown',

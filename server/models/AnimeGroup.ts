@@ -22,6 +22,7 @@ export interface IAnimeGroup extends Document {
   links: IAnimeLink[];
   entries: IEntry[];
   coverImage?: string;
+  isPublic: boolean;
   createdAt: Date;
 }
 
@@ -93,6 +94,10 @@ const animeGroupSchema = new Schema({
   coverImage: {
     type: String,
     default: null,
+  },
+  isPublic: {
+    type: Boolean,
+    default: false,
   },
   createdAt: {
     type: Date,

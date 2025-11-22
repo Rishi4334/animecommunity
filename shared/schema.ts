@@ -77,6 +77,7 @@ export const animeGroupSchema = z.object({
   links: z.array(animeLinkSchema).default([]),
   entries: z.array(entrySchema).default([]),
   coverImage: z.string().optional(),
+  isPublic: z.boolean().default(false),
   createdAt: z.date().or(z.string()).optional(),
 });
 
