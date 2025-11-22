@@ -10,9 +10,11 @@ router.get('/stats', authenticate, requireAdmin, async (req: AuthRequest, res: R
   try {
     const totalUsers = await User.countDocuments();
     const totalAnimeGroups = await AnimeGroup.countDocuments();
-    
     const allGroups = await AnimeGroup.find();
-    const pendingPosts = allGroups.filter(group => !group.isPublic).length;
+
+    const pendingEntries = allGroups.reduce((count, group) => {
+      return count + group.entries.filter(e => !e.adminApproved).length;
+    }, 0);
 
     const completedGroups = allGroups.filter(group => {
       const lastEntry = group.entries[group.entries.length - 1];
@@ -23,7 +25,7 @@ router.get('/stats', authenticate, requireAdmin, async (req: AuthRequest, res: R
 
     res.json({
       totalUsers,
-      pendingPosts,
+      pendingEntries,
       totalAnimeGroups,
       completionRate,
     });
@@ -34,30 +36,34 @@ router.get('/stats', authenticate, requireAdmin, async (req: AuthRequest, res: R
 });
 
 // Get pending anime posts (requests to make public)
-router.get('/pending-posts', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+router.get('/pending-entries', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const animeGroups = await AnimeGroup.find({ isPublic: false });
-    
-    const pendingPosts = await Promise.all(
-      animeGroups.map(async (group) => {
-        const user = await User.findById(group.userId).select('username');
-        return {
-          _id: group._id,
-          animeName: group.animeName,
-          genre: group.genre,
-          totalEpisodes: group.totalEpisodes,
-          coverImage: group.coverImage,
-          username: user?.username || 'Unknown',
-          userId: group.userId,
-          entriesCount: group.entries.length,
-          createdAt: group.createdAt,
-        };
-      })
-    );
+    const animeGroups = await AnimeGroup.find();
 
-    pendingPosts.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const pendingEntries = (
+      await Promise.all(
+        animeGroups.map(async (group) => {
+          const user = await User.findById(group.userId).select('username');
+          return group.entries
+            .map((entry, index) => ({ entry, index }))
+            .filter(e => !e.entry.adminApproved)
+            .map(e => ({
+              _id: `${group._id}-${e.index}`,
+              animeGroupId: group._id.toString(),
+              animeName: group.animeName,
+              username: user?.username || 'Unknown',
+              userId: group.userId.toString(),
+              entryIndex: e.index,
+              entry: e.entry,
+              createdAt: group.createdAt.toISOString(),
+            }));
+        })
+      )
+    ).flat();
 
-    res.json(pendingPosts);
+    pendingEntries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    res.json(pendingEntries);
   } catch (error: any) {
     console.error('Error fetching pending posts:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -65,45 +71,81 @@ router.get('/pending-posts', authenticate, requireAdmin, async (req: AuthRequest
 });
 
 // Approve anime post (make public)
-router.post('/approve-post/:groupId', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+router.post('/approve-entry/:groupId/:entryIndex', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { groupId } = req.params;
-    
-    const animeGroup = await AnimeGroup.findByIdAndUpdate(
-      groupId,
-      { isPublic: true },
-      { new: true }
-    );
-    
-    if (!animeGroup) {
+    const { groupId, entryIndex } = req.params;
+    const idx = parseInt(entryIndex, 10);
+
+    const group = await AnimeGroup.findById(groupId);
+    if (!group) {
       return res.status(404).json({ message: 'Anime group not found' });
     }
+    if (idx < 0 || idx >= group.entries.length) {
+      return res.status(400).json({ message: 'Invalid entry index' });
+    }
 
-    res.json({ message: 'Anime post approved and made public', animeGroup });
+    group.entries[idx].adminApproved = true;
+    group.isPublic = true;
+    await group.save();
+
+    res.json({ message: 'Entry approved', animeGroup: group });
   } catch (error: any) {
-    console.error('Error approving post:', error);
+    console.error('Error approving entry:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // Reject anime post (keep private)
-router.post('/reject-post/:groupId', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+router.post('/reject-entry/:groupId/:entryIndex', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { groupId } = req.params;
-    
-    const animeGroup = await AnimeGroup.findByIdAndUpdate(
-      groupId,
-      { isPublic: false },
-      { new: true }
-    );
-    
-    if (!animeGroup) {
+    const { groupId, entryIndex } = req.params;
+    const idx = parseInt(entryIndex, 10);
+
+    const group = await AnimeGroup.findById(groupId);
+    if (!group) {
       return res.status(404).json({ message: 'Anime group not found' });
     }
+    if (idx < 0 || idx >= group.entries.length) {
+      return res.status(400).json({ message: 'Invalid entry index' });
+    }
 
-    res.json({ message: 'Entry rejected', animeGroup });
+    group.entries.splice(idx, 1);
+    if (group.entries.every(e => !e.adminApproved)) {
+      group.isPublic = false;
+    }
+    await group.save();
+
+    res.json({ message: 'Entry rejected', animeGroup: group });
   } catch (error: any) {
     console.error('Error rejecting entry:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+
+// Delete a non-admin user and all their anime groups
+router.delete('/users/:id', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(400).json({ message: 'Cannot delete admin accounts' });
+    }
+
+    const deletedGroups = await AnimeGroup.deleteMany({ userId: id });
+    await User.findByIdAndDelete(id);
+
+    res.json({
+      message: 'User deleted',
+      deletedUserId: id,
+      deletedAnimeGroups: deletedGroups.deletedCount || 0,
+    });
+  } catch (error: any) {
+    console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

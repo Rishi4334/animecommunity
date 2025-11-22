@@ -3,6 +3,8 @@ import path from "node:path";
 import { type Server } from "node:http";
 
 import express, { type Express } from "express";
+import dotenv from "dotenv";
+dotenv.config();
 import runApp from "./app";
 
 export async function serveStatic(app: Express, _server: Server) {

@@ -87,11 +87,13 @@ export default async function runApp(
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
+  // Use 127.0.0.1 on Windows, 0.0.0.0 on other platforms (Replit requirement)
+  const host = process.platform === 'win32' ? '127.0.0.1' : '0.0.0.0';
   server.listen({
     port,
-    host: "0.0.0.0",
-    reusePort: true,
+    host,
+    reusePort: process.platform !== 'win32',
   }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on http://${host}:${port}`);
   });
 }

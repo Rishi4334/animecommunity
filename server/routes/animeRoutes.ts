@@ -17,9 +17,9 @@ router.get('/my-anime', authenticate, async (req: AuthRequest, res: Response) =>
 });
 
 // Get public feed (only approved/public anime posts)
-router.get('/feed', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/feed', async (_req, res: Response) => {
   try {
-    const animeGroups = await AnimeGroup.find({ isPublic: true }).sort({ createdAt: -1 }).limit(100);
+    const animeGroups = await AnimeGroup.find().sort({ createdAt: -1 }).limit(100);
     
     const groupsWithUsers = await Promise.all(
       animeGroups.map(async (group) => {
@@ -46,6 +46,18 @@ router.get('/feed', authenticate, async (req: AuthRequest, res: Response) => {
     res.json(groupsWithUsers);
   } catch (error: any) {
     console.error('Error fetching feed:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get all anime groups for a specific user
+router.get('/user/:userId', async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params as { userId: string };
+    const animeGroups = await AnimeGroup.find({ userId }).sort({ createdAt: -1 });
+    res.json(animeGroups);
+  } catch (error: any) {
+    console.error('Error fetching user anime groups:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

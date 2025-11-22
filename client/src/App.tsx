@@ -32,15 +32,14 @@ function Router() {
       <Route path="/dashboard">
         {() => <ProtectedRoute component={Dashboard} />}
       </Route>
-      <Route path="/feed">
-        {() => <ProtectedRoute component={PublicFeed} />}
-      </Route>
+      <Route path="/feed" component={PublicFeed} />
       <Route path="/anime/:id">
         {() => <ProtectedRoute component={AnimeGroup} />}
       </Route>
       <Route path="/profile">
         {() => <ProtectedRoute component={UserProfile} />}
       </Route>
+      <Route path="/user/:id" component={UserProfile} />
       <Route path="/admin">
         {() => <ProtectedRoute component={AdminPanel} />}
       </Route>

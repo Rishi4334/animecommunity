@@ -7,12 +7,20 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
+function withBase(url: string): string {
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('/')) return `${API_BASE}${url.startsWith('/api') ? url.replace('/api', '') : url}`;
+  return `${API_BASE}/${url}`;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const res = await fetch(withBase(url), {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -35,7 +43,7 @@ export const getQueryFn: <T>(options: {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(queryKey.join("/") as string, {
+    const res = await fetch(withBase(queryKey.join("/") as string), {
       credentials: "include",
       headers,
     });

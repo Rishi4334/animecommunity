@@ -17,8 +17,9 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [showStartDialog, setShowStartDialog] = useState(false);
 
-  const { data: animeGroups, isLoading, refetch } = useQuery<AnimeGroup[]>({
+  const { data: animeGroups, isLoading } = useQuery<AnimeGroup[]>({
     queryKey: ['/anime/my-anime'],
+    enabled: !!user?._id,
     refetchOnMount: true,
   });
 
@@ -53,8 +54,6 @@ export default function Dashboard() {
 
   const AnimeCard = ({ group }: { group: AnimeGroup }) => {
     const lastEntry = group.entries[group.entries.length - 1];
-    const approvedCount = group.entries.filter(e => e.adminApproved).length;
-    const pendingCount = group.entries.filter(e => !e.adminApproved).length;
 
     return (
       <Link href={`/anime/${group._id}`}>
@@ -83,20 +82,7 @@ export default function Dashboard() {
               <p className="text-sm line-clamp-2">{lastEntry.thoughts}</p>
             )}
 
-            <div className="flex items-center gap-2 pt-2">
-              {approvedCount > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  {approvedCount} approved
-                </Badge>
-              )}
-              {pendingCount > 0 && (
-                <Badge variant="outline" className="text-xs">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {pendingCount} pending
-                </Badge>
-              )}
-            </div>
+            
           </CardContent>
         </Card>
       </Link>

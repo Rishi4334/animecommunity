@@ -1,137 +1,48 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
-import { api } from '@/utils/api';
 import { Navbar } from '@/components/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, PlayCircle, Edit, CheckCircle2, Clock } from 'lucide-react';
-import { AnimeGroupWithUser, Entry } from '@shared/schema';
-import { format } from 'date-fns';
 
 export default function PublicFeed() {
-  const { data: feed, isLoading } = useQuery<AnimeGroupWithUser[]>({
-    queryKey: ['/anime/feed'],
+  const { data: users, isLoading } = useQuery<any[]>({
+    queryKey: ['/users/public'],
   });
 
   const getInitials = (username: string) => username.slice(0, 2).toUpperCase();
 
-  const getEntryIcon = (type: Entry['type']) => {
-    const icons = {
-      start: PlayCircle,
-      update: Edit,
-      complete: CheckCircle2,
-    };
-    return icons[type];
-  };
+  
 
-  const getEntryBadgeColor = (type: Entry['type']) => {
-    const colors = {
-      start: 'bg-blue-500',
-      update: 'bg-yellow-500',
-      complete: 'bg-green-500',
-    };
-    return colors[type];
-  };
-
-  const EntryCard = ({ group, entry }: { group: AnimeGroupWithUser; entry: Entry }) => {
-    const Icon = getEntryIcon(entry.type);
-    const badgeColor = getEntryBadgeColor(entry.type);
-
+  const UserCard = ({ user }: { user: any }) => {
     return (
-      <Card className="hover-elevate active-elevate-2 transition-all overflow-hidden" data-testid={`card-entry-${group._id}`}>
-        {group.coverImage && (
-          <div className="relative w-full h-32 bg-muted">
-            <img src={group.coverImage} alt={group.animeName} className="w-full h-full object-cover" />
-          </div>
-        )}
-        <CardHeader className="pb-3">
-          <div className="flex items-start gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {getInitials(group.user.username)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <p className="font-medium text-sm">{group.user.username}</p>
-                <div className={`h-2 w-2 rounded-full ${badgeColor}`} />
-                <span className="text-xs text-muted-foreground capitalize">{entry.type}</span>
-              </div>
-              <Link href={`/anime/${group._id}`}>
-                <CardTitle className="font-['Poppins'] text-lg hover:text-primary transition-colors cursor-pointer">
-                  {group.animeName}
+      <Link href={`/user/${user._id}`}>
+        <Card className="hover-elevate active-elevate-2 transition-all overflow-hidden cursor-pointer" data-testid={`card-user-${user._id}`}>
+          {user.previewCoverImage && (
+            <div className="relative w-full h-32 overflow-hidden bg-muted">
+              <img src={user.previewCoverImage} alt={user.previewAnimeName || 'Anime cover'} className="w-full h-full object-cover" />
+            </div>
+          )}
+          <CardHeader className="pb-3">
+            <div className="flex items-start gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {getInitials(user.username)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="font-['Poppins'] text-lg hover:text-primary transition-colors">
+                  {user.username}
                 </CardTitle>
-              </Link>
-              <CardDescription className="flex items-center gap-2 mt-1">
-                <span>{group.genre}</span>
-                <span>•</span>
-                <span className="font-mono text-xs">{group.totalEpisodes} episodes</span>
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <p className="text-sm line-clamp-3">{entry.thoughts}</p>
-
-          <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-            <Clock className="h-3 w-3" />
-            <span>{format(new Date(entry.date), 'MMM d, yyyy')}</span>
-            {entry.startTime && <span>• {entry.startTime}</span>}
-            {entry.endTime && <span>• {entry.endTime}</span>}
-          </div>
-
-          {group.links.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {group.links.map((link, idx) => (
-                <a
-                  key={idx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Badge variant="outline" className="gap-1 hover-elevate cursor-pointer">
-                    <ExternalLink className="h-3 w-3" />
-                    {link.label}
-                  </Badge>
-                </a>
-              ))}
-            </div>
-          )}
-
-          {/* User Profile Links */}
-          {(group.user.profileLinks.animeSites.length > 0 || group.user.profileLinks.mangaSites.length > 0) && (
-            <div className="pt-2 border-t">
-              <p className="text-xs text-muted-foreground mb-2">User's profiles:</p>
-              <div className="flex flex-wrap gap-2">
-                {group.user.profileLinks.animeSites.map((site, idx) => (
-                  <a
-                    key={idx}
-                    href={site.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Badge variant="secondary" className="text-xs gap-1 hover-elevate cursor-pointer">
-                      <ExternalLink className="h-3 w-3" />
-                      {site.name}
-                    </Badge>
-                  </a>
-                ))}
+                <CardDescription className="text-sm">Joined {new Date(user.createdAt).toLocaleDateString()}</CardDescription>
               </div>
             </div>
-          )}
-
-          <Link href={`/anime/${group._id}`}>
-            <button className="text-sm text-primary hover:underline font-medium" data-testid={`button-view-thread-${group._id}`}>
-              View full thread →
-            </button>
-          </Link>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">View timeline and anime activity</p>
+          </CardContent>
+        </Card>
+      </Link>
     );
   };
 
@@ -140,8 +51,8 @@ export default function PublicFeed() {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="font-['Poppins'] text-3xl font-bold mb-2">Public Feed</h1>
-          <p className="text-muted-foreground">Discover what the community is watching</p>
+          <h1 className="font-['Poppins'] text-3xl font-bold mb-2">Community</h1>
+          <p className="text-muted-foreground">Browse all users and view their anime timelines</p>
         </div>
 
         {isLoading ? (
@@ -164,23 +75,19 @@ export default function PublicFeed() {
               </Card>
             ))}
           </div>
-        ) : !feed || feed.length === 0 ? (
+        ) : !users || users.length === 0 ? (
           <Card className="p-12 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary mx-auto mb-4">
               <span className="font-['Poppins'] text-2xl font-bold text-primary-foreground">A</span>
             </div>
-            <h3 className="font-['Poppins'] text-lg font-semibold mb-2">No approved entries yet</h3>
-            <p className="text-muted-foreground">Start tracking anime to see content here!</p>
+            <h3 className="font-['Poppins'] text-lg font-semibold mb-2">No users found</h3>
+            <p className="text-muted-foreground">Create an account to join the community</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {feed.flatMap(group =>
-              group.entries
-                .filter(entry => entry.adminApproved)
-                .map((entry, idx) => (
-                  <EntryCard key={`${group._id}-${idx}`} group={group} entry={entry} />
-                ))
-            )}
+            {users.map((u) => (
+              <UserCard key={u._id} user={u} />
+            ))}
           </div>
         )}
       </div>

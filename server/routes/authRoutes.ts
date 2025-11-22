@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 // Register
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password } = req.body;
 
     // Normalize email
     const normalizedEmail = email.toLowerCase();
@@ -32,7 +32,7 @@ router.post('/register', async (req: Request, res: Response) => {
       username,
       email: normalizedEmail,
       password: hashedPassword,
-      role: isFirstUser ? 'admin' : (role || 'normal'),
+      role: isFirstUser ? 'admin' : 'normal',
       profileLinks: { animeSites: [], mangaSites: [] },
     });
 

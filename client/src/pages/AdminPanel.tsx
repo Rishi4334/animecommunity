@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/utils/api';
-import { queryClient } from '@/lib/queryClient';
 import { Navbar } from '@/components/Navbar';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -17,9 +13,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, Users, Clock, TrendingUp, Award, Loader2 } from 'lucide-react';
-import { PendingEntry, AdminStats } from '@shared/schema';
-import { format } from 'date-fns';
+import { Users, TrendingUp, Award } from 'lucide-react';
+import { AdminStats } from '@shared/schema';
+import { Button } from '@/components/ui/button';
+import { api } from '@/utils/api';
+import { queryClient } from '@/lib/queryClient';
 
 export default function AdminPanel() {
   const { isAdmin } = useAuth();
@@ -29,52 +27,23 @@ export default function AdminPanel() {
     queryKey: ['/admin/stats'],
   });
 
-  const { data: pendingEntries, isLoading: entriesLoading } = useQuery<PendingEntry[]>({
-    queryKey: ['/admin/pending-entries'],
+  const [search, setSearch] = useState('');
+  const { data: users, isLoading: usersLoading } = useQuery<any[]>({
+    queryKey: ['/users/public', search],
   });
 
-  const approveMutation = useMutation({
-    mutationFn: async ({ animeGroupId, entryIndex }: { animeGroupId: string; entryIndex: number }) => {
-      return api.post(`/admin/approve-entry/${animeGroupId}/${entryIndex}`);
-    },
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => api.delete(`/admin/users/${userId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/admin/pending-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/users/public'] });
       queryClient.invalidateQueries({ queryKey: ['/admin/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/anime/feed'] });
-      toast({
-        title: 'Entry approved',
-        description: 'The entry is now visible in the public feed',
-      });
+      toast({ title: 'User deleted', description: 'Profile removed successfully' });
     },
     onError: (error: any) => {
-      toast({
-        title: 'Failed to approve',
-        description: error.response?.data?.message || 'An error occurred',
-        variant: 'destructive',
-      });
+      toast({ title: 'Failed to delete', description: error.response?.data?.message || 'An error occurred', variant: 'destructive' });
     },
   });
 
-  const rejectMutation = useMutation({
-    mutationFn: async ({ animeGroupId, entryIndex }: { animeGroupId: string; entryIndex: number }) => {
-      return api.post(`/admin/reject-entry/${animeGroupId}/${entryIndex}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/admin/pending-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['/admin/stats'] });
-      toast({
-        title: 'Entry rejected',
-        description: 'The entry has been removed',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Failed to reject',
-        description: error.response?.data?.message || 'An error occurred',
-        variant: 'destructive',
-      });
-    },
-  });
 
   if (!isAdmin) {
     return (
@@ -96,7 +65,7 @@ export default function AdminPanel() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="font-['Poppins'] text-3xl font-bold mb-2">Admin Panel</h1>
-          <p className="text-muted-foreground">Manage user entries and view platform statistics</p>
+          <p className="text-muted-foreground">Platform statistics and user directory</p>
         </div>
 
         {/* Stats Cards */}
@@ -122,15 +91,7 @@ export default function AdminPanel() {
                 <CardTitle className="text-3xl font-['Poppins']">{stats.totalUsers}</CardTitle>
               </CardHeader>
             </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Pending Entries
-                </CardDescription>
-                <CardTitle className="text-3xl font-['Poppins']">{stats.pendingEntries}</CardTitle>
-              </CardHeader>
-            </Card>
+            {/* Removed pending entries in simplified portal */}
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription className="flex items-center gap-2">
@@ -152,14 +113,22 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* Pending Entries Table */}
+        {/* User Directory */}
         <Card>
           <CardHeader>
-            <CardTitle className="font-['Poppins'] text-2xl">Pending Entries</CardTitle>
-            <CardDescription>Review and approve user submissions</CardDescription>
+            <CardTitle className="font-['Poppins'] text-2xl">User Directory</CardTitle>
+            <CardDescription>Search users and view profiles</CardDescription>
           </CardHeader>
           <CardContent>
-            {entriesLoading ? (
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                className="w-full px-3 py-2 rounded-md border bg-background"
+                placeholder="Search by username or email"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            {usersLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="flex items-center gap-4">
@@ -167,94 +136,42 @@ export default function AdminPanel() {
                   </div>
                 ))}
               </div>
-            ) : !pendingEntries || pendingEntries.length === 0 ? (
+            ) : !users || users.length === 0 ? (
               <div className="text-center py-12">
-                <CheckCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-['Poppins'] text-lg font-semibold mb-2">All caught up!</h3>
-                <p className="text-muted-foreground">No pending entries to review</p>
+                <p className="text-muted-foreground">No users found</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Anime</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Thoughts Preview</TableHead>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pendingEntries.map((pending) => (
-                      <TableRow key={`${pending.animeGroupId}-${pending.entryIndex}`} data-testid={`pending-entry-${pending._id}`}>
-                        <TableCell className="font-medium">{pending.username}</TableCell>
-                        <TableCell>{pending.animeName}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              pending.entry.type === 'start'
-                                ? 'default'
-                                : pending.entry.type === 'complete'
-                                ? 'default'
-                                : 'secondary'
-                            }
-                            className="capitalize"
-                          >
-                            {pending.entry.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {format(new Date(pending.entry.date), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell className="max-w-xs">
-                          <p className="text-sm line-clamp-2">{pending.entry.thoughts}</p>
-                        </TableCell>
+                    {users.map((u) => (
+                      <TableRow key={u._id}>
+                        <TableCell className="font-medium">{u.username}</TableCell>
+                        <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() =>
-                                approveMutation.mutate({
-                                  animeGroupId: pending.animeGroupId,
-                                  entryIndex: pending.entryIndex,
-                                })
-                              }
-                              disabled={approveMutation.isPending || rejectMutation.isPending}
-                              data-testid={`button-approve-${pending._id}`}
-                            >
-                              {approveMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  Approve
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() =>
-                                rejectMutation.mutate({
-                                  animeGroupId: pending.animeGroupId,
-                                  entryIndex: pending.entryIndex,
-                                })
-                              }
-                              disabled={approveMutation.isPending || rejectMutation.isPending}
-                              data-testid={`button-reject-${pending._id}`}
-                            >
-                              {rejectMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <XCircle className="h-4 w-4 mr-1" />
-                                  Reject
-                                </>
-                              )}
-                            </Button>
+                          <div className="flex items-center justify-end gap-3">
+                            <a href={`/user/${u._id}`} className="text-primary hover:underline">View</a>
+                            {u.role !== 'admin' && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm(`Delete user ${u.username}? This will remove all their anime groups.`)) {
+                                    deleteUserMutation.mutate(u._id);
+                                  }
+                                }}
+                                disabled={deleteUserMutation.isPending}
+                              >
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

@@ -177,6 +177,11 @@ export default function AnimeGroup() {
               Back to Dashboard
             </Button>
           </Link>
+          {group.coverImage && (
+            <div className="relative w-full h-40 overflow-hidden bg-muted rounded-md mb-4">
+              <img src={group.coverImage} alt={group.animeName} className="w-full h-full object-cover" />
+            </div>
+          )}
           <h1 className="font-['Poppins'] text-3xl font-bold mb-2">{group.animeName}</h1>
           <div className="flex items-center gap-4 text-muted-foreground">
             <Badge variant="secondary">{group.genre}</Badge>

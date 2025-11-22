@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'wouter';
+import { Link, useParams } from 'wouter';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/utils/api';
 import { Navbar } from '@/components/Navbar';
@@ -21,11 +21,18 @@ import {
 import { AnimeGroup } from '@shared/schema';
 
 export default function UserProfile() {
+  const params = useParams();
+  const viewedUserId = params?.id;
   const { user } = useAuth();
   const [showLinksDialog, setShowLinksDialog] = useState(false);
 
   const { data: animeGroups, isLoading } = useQuery<AnimeGroup[]>({
-    queryKey: ['/anime/my-anime'],
+    queryKey: viewedUserId ? ['/anime/user', viewedUserId] : ['/anime/my-anime'],
+  });
+
+  const { data: viewedUser } = useQuery<any>({
+    queryKey: viewedUserId ? ['/users', viewedUserId] : ['/users', user?._id || 'me'],
+    enabled: !!viewedUserId,
   });
 
   const watching = animeGroups?.filter(group => {
@@ -42,7 +49,12 @@ export default function UserProfile() {
 
   const AnimeCard = ({ group }: { group: AnimeGroup }) => (
     <Link href={`/anime/${group._id}`}>
-      <Card className="hover-elevate active-elevate-2 transition-all cursor-pointer" data-testid={`profile-card-${group._id}`}>
+      <Card className="hover-elevate active-elevate-2 transition-all cursor-pointer overflow-hidden" data-testid={`profile-card-${group._id}`}>
+        {group.coverImage && (
+          <div className="relative w-full h-32 overflow-hidden bg-muted">
+            <img src={group.coverImage} alt={group.animeName} className="w-full h-full object-cover" />
+          </div>
+        )}
         <CardHeader>
           <CardTitle className="font-['Poppins'] text-lg">{group.animeName}</CardTitle>
           <CardDescription>{group.genre}</CardDescription>
@@ -62,9 +74,8 @@ export default function UserProfile() {
     </Link>
   );
 
-  if (!user) {
-    return null;
-  }
+  const displayUser = viewedUserId ? viewedUser : user;
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,22 +87,25 @@ export default function UserProfile() {
             <div className="flex items-start gap-6">
               <Avatar className="h-20 w-20">
                 <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-                  {getInitials(user.username)}
+                  {getInitials(displayUser?.username || 'U')}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="font-['Poppins'] text-2xl font-bold">{user.username}</h1>
-                  {user.role === 'admin' && (
+                  <h1 className="font-['Poppins'] text-2xl font-bold">{displayUser?.username}</h1>
+                  {displayUser?.role === 'admin' && (
                     <Badge variant="default">Admin</Badge>
                   )}
                 </div>
-                <p className="text-muted-foreground mb-4">{user.email}</p>
+                {displayUser?.email && (
+                  <p className="text-muted-foreground mb-4">{displayUser.email}</p>
+                )}
 
                 {/* Profile Links */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-medium">My Anime/Manga Sites</h3>
+                    {!viewedUserId && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -101,13 +115,14 @@ export default function UserProfile() {
                       <Edit className="h-4 w-4 mr-1" />
                       Manage Links
                     </Button>
+                    )}
                   </div>
 
-                  {user.profileLinks.animeSites.length > 0 && (
+                  {displayUser?.profileLinks?.animeSites?.length > 0 && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-2">Anime Sites:</p>
                       <div className="flex flex-wrap gap-2">
-                        {user.profileLinks.animeSites.map((site, idx) => (
+                        {displayUser.profileLinks.animeSites.map((site: any, idx: number) => (
                           <a
                             key={idx}
                             href={site.url}
@@ -124,11 +139,11 @@ export default function UserProfile() {
                     </div>
                   )}
 
-                  {user.profileLinks.mangaSites.length > 0 && (
+                  {displayUser?.profileLinks?.mangaSites?.length > 0 && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-2">Manga Sites:</p>
                       <div className="flex flex-wrap gap-2">
-                        {user.profileLinks.mangaSites.map((site, idx) => (
+                        {displayUser.profileLinks.mangaSites.map((site: any, idx: number) => (
                           <a
                             key={idx}
                             href={site.url}
@@ -145,7 +160,7 @@ export default function UserProfile() {
                     </div>
                   )}
 
-                  {user.profileLinks.animeSites.length === 0 && user.profileLinks.mangaSites.length === 0 && (
+                  {!displayUser?.profileLinks || (displayUser.profileLinks.animeSites.length === 0 && displayUser.profileLinks.mangaSites.length === 0) && (
                     <p className="text-sm text-muted-foreground italic">
                       No profile links added yet. Click "Manage Links" to add your anime/manga profiles.
                     </p>
@@ -257,7 +272,9 @@ export default function UserProfile() {
         </Tabs>
       </div>
 
-      <ManageProfileLinksDialog open={showLinksDialog} onOpenChange={setShowLinksDialog} />
+      {!viewedUserId && (
+        <ManageProfileLinksDialog open={showLinksDialog} onOpenChange={setShowLinksDialog} />
+      )}
     </div>
   );
 }
